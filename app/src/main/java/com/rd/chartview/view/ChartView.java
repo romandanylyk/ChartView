@@ -19,16 +19,13 @@ import java.util.ListIterator;
 
 public class ChartView extends View {
 
-	private static final int FRAME_LINE_WIDTH = 1;
-	private static final int LINE_WIDTH = 10;
-
 	private static final int CHART_PARTS = 5;
 	private static final int CHART_PART_VALUE = 10;
 
 	private static final int CIRCLE_RADIUS = 20;
 
 	private static final int VALUE_NONE = -1;
-	private static final int MAX_ITEMS_COUNT = 6;
+	private static final int MAX_ITEMS_COUNT = 7;
 
 	private List<DrawData> drawDataList;
 	private List<Integer> dataList;
@@ -42,7 +39,8 @@ public class ChartView extends View {
 	private Paint fillPaint;
 
 	private int padding;
-	private int maxTitleWidth;
+	private int textSize;
+	private int titleWidth;
 
 	public ChartView(Context context) {
 		super(context);
@@ -74,26 +72,9 @@ public class ChartView extends View {
 
 	@Override
 	protected void onDraw(Canvas canvas) {
-		updateTitleWidth();
 		drawFrame(canvas);
+		drawLines(canvas);
 	}
-
-	private void updateTitleWidth() {
-		if (maxTitleWidth <= 0) {
-			maxTitleWidth = getTitleWidth();
-		}
-	}
-
-	private int getTitleWidth() {
-		if (dataList == null || dataList.isEmpty()) {
-			return 0;
-		}
-
-		String maxValue = String.valueOf(Collections.max(dataList));
-		int titleWidth = (int) frameTextPaint.measureText(maxValue);
-		return padding + titleWidth;
-	}
-
 
 	private void drawFrame(@NonNull Canvas canvas) {
 		drawFrameLines(canvas);
@@ -104,10 +85,9 @@ public class ChartView extends View {
 	private void drawFrameLines(@NonNull Canvas canvas) {
 		int height = getHeight();
 		int width = getWidth();
-		int leftPadding = padding + maxTitleWidth;
 
-		canvas.drawLine(leftPadding, padding, leftPadding, height - padding, frameLinePaint);
-		canvas.drawLine(leftPadding, height - padding, width - padding, height - padding, frameLinePaint);
+		canvas.drawLine(titleWidth, padding, titleWidth, height - padding, frameLinePaint);
+		canvas.drawLine(titleWidth, height - padding, width - padding, height - padding, frameLinePaint);
 	}
 
 	private void drawFrameText(@NonNull Canvas canvas) {
@@ -116,20 +96,22 @@ public class ChartView extends View {
 		float value = (float) correctedMaxValue / maxValue;
 
 		int height = getHeight() - (padding * 2);
-		int leftPadding = padding + maxTitleWidth;
-
 		int chartPartHeight = (int) ((height * value) / CHART_PARTS);
 		int titleValue = 0;
 
 		for (int i = 0; i <= CHART_PARTS; i++) {
 			int currHeight = getHeight() - (chartPartHeight * i) - padding;
 
+			if (i > 0) {
+				canvas.drawLine(titleWidth, currHeight, getWidth() - padding, currHeight, frameInternalPaint);
+			}
+
+			if (i >= CHART_PARTS && maxValue == correctedMaxValue) {
+				currHeight = textSize + padding;
+			}
+
 			String strTitle = String.valueOf(titleValue);
 			canvas.drawText(strTitle, padding, currHeight, frameTextPaint);
-
-			if (i > 0) {
-				canvas.drawLine(leftPadding, currHeight, getWidth() - padding, currHeight, frameInternalPaint);
-			}
 
 			titleValue += correctedMaxValue / CHART_PARTS;
 		}
@@ -159,7 +141,7 @@ public class ChartView extends View {
 				int stopX = drawData.getStopX();
 				int stopY = drawData.getStopY();
 
-				canvas.drawLine(startX, startY, stopX, stopY, frameLinePaint);
+				canvas.drawLine(startX, startY, stopX, stopY, linePaint);
 			}
 		}
 	}
@@ -180,17 +162,18 @@ public class ChartView extends View {
 
 		this.dataList.clear();
 		this.dataList.addAll(dataList);
+		updateTitleWidth();
 
 		post(new Runnable() {
 			@Override
 			public void run() {
-				createDrawData(dataList);
+				createNextDrawData(dataList);
 				invalidate();
 			}
 		});
 	}
 
-	private void createDrawData(@NonNull List<Integer> dataList) {
+	private void createNextDrawData(@NonNull List<Integer> dataList) {
 		correctDataListSize(dataList);
 
 		List<Float> valueList = createValueList(dataList);
@@ -240,37 +223,74 @@ public class ChartView extends View {
 	@NonNull
 	private List<DrawData> createDrawDataList(@NonNull List<Float> valueList) {
 		List<DrawData> drawDataList = new ArrayList<>();
-		double previousValue = 0;
 
 		for (int i = 0; i < valueList.size(); i++) {
-			double nextValue = valueList.get(i);
-			DrawData drawData = createDrawData(previousValue, nextValue, i);
+			float value = valueList.get(i);
+			DrawData nextDrawData = createNextDrawData(i, value);
 
-			drawDataList.add(drawData);
-			previousValue = nextValue;
+			if (i > 0 && !drawDataList.isEmpty()) {
+				DrawData previousDrawData = drawDataList.get(drawDataList.size() - 1);
+				updatePreviousDrawData(previousDrawData, nextDrawData);
+			}
+
+			drawDataList.add(nextDrawData);
 		}
 
+		drawDataList.remove(drawDataList.size() - 1);
 		return drawDataList;
 	}
 
-	@Nullable
-	private DrawData createDrawData(double previousValue, double nextValue, int index) {
-		int width = (getWidth() / MAX_ITEMS_COUNT);
-		int height = getHeight() - (CIRCLE_RADIUS * 2);
-
-		int startX = index > 0 ? (index - 1) * width : 0;
-		int startY = previousValue > 0 ? (int) (height - (height * previousValue)) : height;
-
-		int stopX = index >= 0 ? index * width : 0;
-		int stopY = nextValue > 0 ? (int) (height - (height * nextValue)) : height;
+	@NonNull
+	private DrawData createNextDrawData(int index, float value) {
+		int startX = getCoordinateX(index);
+		int startY = getCoordinateY(value);
 
 		DrawData drawData = new DrawData();
 		drawData.setStartX(startX);
 		drawData.setStartY(startY);
-		drawData.setStopX(stopX);
-		drawData.setStopY(stopY);
 
 		return drawData;
+	}
+
+	private void updatePreviousDrawData(@NonNull DrawData previousDrawData, @NonNull DrawData nextDrawData) {
+		previousDrawData.setStopX(nextDrawData.getStartX());
+		previousDrawData.setStopY(nextDrawData.getStartY());
+	}
+
+	@SuppressWarnings("UnnecessaryLocalVariable")
+	private int getCoordinateX(int index) {
+		int width = getWidth() - titleWidth - padding;
+		int partWidth = width / (MAX_ITEMS_COUNT - 1);
+
+		int coordinate = titleWidth + (partWidth * index);
+		return coordinate;
+	}
+
+	@SuppressWarnings("UnnecessaryLocalVariable")
+	private int getCoordinateY(float value) {
+		int height = getHeight() - padding;
+		int coordinate = (int) (height - (height * value));
+		if (value >= 1) {
+			coordinate += padding;
+		}
+
+		return coordinate;
+	}
+
+	private void updateTitleWidth() {
+		if (titleWidth <= 0) {
+			titleWidth = getTitleWidth();
+		}
+	}
+
+	private int getTitleWidth() {
+		if (dataList == null || dataList.isEmpty()) {
+			return 0;
+		}
+
+		String maxValue = String.valueOf(Collections.max(dataList));
+		int titleWidth = (int) frameTextPaint.measureText(maxValue);
+		return padding + titleWidth + padding;
 	}
 
 	private void init() {
@@ -278,6 +298,7 @@ public class ChartView extends View {
 		dataList = new ArrayList<>();
 
 		padding = (int) getResources().getDimension(R.dimen.frame_padding);
+		textSize = (int) getResources().getDimension(R.dimen.frame_text_size);
 
 		frameLinePaint = new Paint();
 		frameLinePaint.setAntiAlias(true);
@@ -291,13 +312,13 @@ public class ChartView extends View {
 
 		frameTextPaint = new Paint();
 		frameTextPaint.setAntiAlias(true);
-		frameTextPaint.setTextSize(getResources().getDimension(R.dimen.frame_text_size));
+		frameTextPaint.setTextSize(textSize);
 		frameTextPaint.setColor(getContext().getResources().getColor(R.color.gray_400));
 
-//		linePaint = new Paint();
-//		linePaint.setAntiAlias(true);
-//		linePaint.setStrokeWidth(LINE_WIDTH);
-//		linePaint.setColor(getContext().getResources().getColor(R.color.blue));
+		linePaint = new Paint();
+		linePaint.setAntiAlias(true);
+		linePaint.setStrokeWidth(getResources().getDimension(R.dimen.line_width));
+		linePaint.setColor(getContext().getResources().getColor(R.color.blue_500));
 //
 //		strokePaint = new Paint();
 //		strokePaint.setStyle(Paint.Style.STROKE);
@@ -309,7 +330,5 @@ public class ChartView extends View {
 //		fillPaint.setStyle(Paint.Style.FILL);
 //		fillPaint.setAntiAlias(true);
 //		fillPaint.setColor(getContext().getResources().getColor(R.color.white));
-//
-
 	}
 }
