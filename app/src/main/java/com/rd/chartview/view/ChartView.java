@@ -20,12 +20,9 @@ import java.util.ListIterator;
 public class ChartView extends View {
 
 	private static final int CHART_PARTS = 5;
-	private static final int CHART_PART_VALUE = 10;
-
-	private static final int CIRCLE_RADIUS = 20;
-
-	private static final int VALUE_NONE = -1;
 	private static final int MAX_ITEMS_COUNT = 7;
+	private static final int CHART_PART_VALUE = 10;
+	private static final int TEXT_SIZE_OFFSET = 10;
 
 	private List<DrawData> drawDataList;
 	private List<Integer> dataList;
@@ -39,8 +36,9 @@ public class ChartView extends View {
 	private Paint fillPaint;
 
 	private int padding;
-	private int textSize;
 	private int titleWidth;
+	private float textSize;
+	private float heightOffset;
 
 	public ChartView(Context context) {
 		super(context);
@@ -74,20 +72,21 @@ public class ChartView extends View {
 	protected void onDraw(Canvas canvas) {
 		drawFrame(canvas);
 		drawLines(canvas);
+		drawCircles(canvas);
 	}
 
 	private void drawFrame(@NonNull Canvas canvas) {
-		drawFrameLines(canvas);
 		drawFrameText(canvas);
+		drawFrameLines(canvas);
 	}
 
 	@SuppressWarnings("SuspiciousNameCombination")
 	private void drawFrameLines(@NonNull Canvas canvas) {
-		int height = getHeight();
-		int width = getWidth();
+		float height = getHeight();
+		float width = getWidth();
 
-		canvas.drawLine(titleWidth, padding, titleWidth, height - padding, frameLinePaint);
-		canvas.drawLine(titleWidth, height - padding, width - padding, height - padding, frameLinePaint);
+		canvas.drawLine(titleWidth, heightOffset, titleWidth, height, frameLinePaint);
+		canvas.drawLine(titleWidth, height, width, height, frameLinePaint);
 	}
 
 	private void drawFrameText(@NonNull Canvas canvas) {
@@ -95,25 +94,32 @@ public class ChartView extends View {
 		int correctedMaxValue = getCorrectedMaxValue(maxValue);
 		float value = (float) correctedMaxValue / maxValue;
 
-		int height = getHeight() - (padding * 2);
-		int chartPartHeight = (int) ((height * value) / CHART_PARTS);
-		int titleValue = 0;
+		float width = getWidth();
+		float height = getHeight();
+		float chartPartHeight = ((height - heightOffset) * value) / CHART_PARTS;
+
+		float currHeight = height;
+		int currTitle = 0;
 
 		for (int i = 0; i <= CHART_PARTS; i++) {
-			int currHeight = getHeight() - (chartPartHeight * i) - padding;
+			float titleY = currHeight;
+
+			if (i <= 0) {
+				titleY = height;
+
+			} else if (textSize + heightOffset > currHeight) {
+				titleY = currHeight + textSize - TEXT_SIZE_OFFSET;
+			}
 
 			if (i > 0) {
-				canvas.drawLine(titleWidth, currHeight, getWidth() - padding, currHeight, frameInternalPaint);
+				canvas.drawLine(titleWidth, currHeight, width, currHeight, frameInternalPaint);
 			}
 
-			if (i >= CHART_PARTS && maxValue == correctedMaxValue) {
-				currHeight = textSize + padding;
-			}
+			String strTitle = String.valueOf(currTitle);
+			canvas.drawText(strTitle, padding, titleY, frameTextPaint);
 
-			String strTitle = String.valueOf(titleValue);
-			canvas.drawText(strTitle, padding, currHeight, frameTextPaint);
-
-			titleValue += correctedMaxValue / CHART_PARTS;
+			currHeight -= chartPartHeight;
+			currTitle += correctedMaxValue / CHART_PARTS;
 		}
 	}
 
@@ -147,10 +153,14 @@ public class ChartView extends View {
 	}
 
 	private void drawCircles(@NonNull Canvas canvas) {
-		for (DrawData drawData : drawDataList) {
+		float radius = getResources().getDimension(R.dimen.radius);
+		float inerRadius = getResources().getDimension(R.dimen.iner_radius);
+
+		for (int i = 1; i < drawDataList.size(); i++) {
+			DrawData drawData = drawDataList.get(i);
 			if (drawData != null) {
-				canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), CIRCLE_RADIUS, strokePaint);
-				canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), CIRCLE_RADIUS - 5, fillPaint);
+				canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), radius, strokePaint);
+				canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), inerRadius, fillPaint);
 			}
 		}
 	}
@@ -259,21 +269,33 @@ public class ChartView extends View {
 
 	@SuppressWarnings("UnnecessaryLocalVariable")
 	private int getCoordinateX(int index) {
-		int width = getWidth() - titleWidth - padding;
+		int width = getWidth() - titleWidth;
 		int partWidth = width / (MAX_ITEMS_COUNT - 1);
-
 		int coordinate = titleWidth + (partWidth * index);
+
+		if (coordinate < 0) {
+			coordinate = 0;
+
+		} else if (coordinate > getWidth()) {
+			coordinate = getWidth();
+		}
+
 		return coordinate;
 	}
 
 	@SuppressWarnings("UnnecessaryLocalVariable")
 	private int getCoordinateY(float value) {
-		int height = getHeight() - padding;
+		int height = (int) (getHeight() - heightOffset);
 		int coordinate = (int) (height - (height * value));
-		if (value >= 1) {
-			coordinate += padding;
+
+		if (coordinate < 0) {
+			coordinate = 0;
+
+		} else if (coordinate > height) {
+			coordinate = height;
 		}
 
+		coordinate += heightOffset;
 		return coordinate;
 	}
 
@@ -294,11 +316,12 @@ public class ChartView extends View {
 	}
 
 	private void init() {
+		heightOffset = getResources().getDimension(R.dimen.radius) + getResources().getDimension(R.dimen.line_width);
 		drawDataList = new ArrayList<>();
 		dataList = new ArrayList<>();
 
 		padding = (int) getResources().getDimension(R.dimen.frame_padding);
-		textSize = (int) getResources().getDimension(R.dimen.frame_text_size);
+		textSize = getResources().getDimension(R.dimen.frame_text_size);
 
 		frameLinePaint = new Paint();
 		frameLinePaint.setAntiAlias(true);
@@ -318,17 +341,17 @@ public class ChartView extends View {
 		linePaint = new Paint();
 		linePaint.setAntiAlias(true);
 		linePaint.setStrokeWidth(getResources().getDimension(R.dimen.line_width));
-		linePaint.setColor(getContext().getResources().getColor(R.color.blue_500));
-//
-//		strokePaint = new Paint();
-//		strokePaint.setStyle(Paint.Style.STROKE);
-//		strokePaint.setAntiAlias(true);
-//		strokePaint.setColor(getContext().getResources().getColor(R.color.blue));
-//		strokePaint.setStrokeWidth(LINE_WIDTH);
-//
-//		fillPaint = new Paint();
-//		fillPaint.setStyle(Paint.Style.FILL);
-//		fillPaint.setAntiAlias(true);
-//		fillPaint.setColor(getContext().getResources().getColor(R.color.white));
+		linePaint.setColor(getContext().getResources().getColor(R.color.blue));
+
+		strokePaint = new Paint();
+		strokePaint.setStyle(Paint.Style.STROKE);
+		strokePaint.setAntiAlias(true);
+		strokePaint.setStrokeWidth(getResources().getDimension(R.dimen.line_width));
+		strokePaint.setColor(getContext().getResources().getColor(R.color.blue));
+
+		fillPaint = new Paint();
+		fillPaint.setStyle(Paint.Style.FILL);
+		fillPaint.setAntiAlias(true);
+		fillPaint.setColor(getContext().getResources().getColor(R.color.white));
 	}
 }

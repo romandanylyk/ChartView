@@ -5,5 +5,7 @@
     <dimen name="frame_line_width">1dp</dimen>
     <dimen name="frame_text_size">14sp</dimen>
 
-    <dimen name="line_width">2dp</dimen>
+    <dimen name="line_width">3dp</dimen>
+    <dimen name="radius">6dp</dimen>
+    <dimen name="iner_radius">5dp</dimen>
 </resources>
