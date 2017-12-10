@@ -26,13 +26,13 @@ public class HomeActivity extends AppCompatActivity {
 	@NonNull
 	private List<Integer> createChartData() {
 		List<Integer> chartDataList = new ArrayList<>();
-		chartDataList.add(0);
+		chartDataList.add(10);
+		chartDataList.add(25);
+		chartDataList.add(20);
 		chartDataList.add(30);
 		chartDataList.add(20);
 		chartDataList.add(50);
-		chartDataList.add(10);
 		chartDataList.add(40);
-		chartDataList.add(20);
 
 		return chartDataList;
 	}

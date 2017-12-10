@@ -1,5 +1,9 @@
 package com.rd.chartview.view;
 
+import android.animation.Animator;
+import android.animation.AnimatorSet;
+import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -8,7 +12,9 @@ import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import com.rd.chartview.R;
 import com.rd.chartview.view.data.DrawData;
 
@@ -19,10 +25,16 @@ import java.util.ListIterator;
 
 public class ChartView extends View {
 
+	private static final String PROPERTY_X = "PROPERTY_X";
+	private static final String PROPERTY_Y = "PROPERTY_Y";
+	private static final String PROPERTY_ALPHA = "PROPERTY_ALPHA";
+
+	private static final int VALUE_NONE = -1;
 	private static final int CHART_PARTS = 5;
 	private static final int MAX_ITEMS_COUNT = 7;
 	private static final int CHART_PART_VALUE = 10;
 	private static final int TEXT_SIZE_OFFSET = 10;
+	private static final int ANIMATION_DURATION = 1000;
 
 	private List<DrawData> drawDataList;
 	private List<Integer> dataList;
@@ -39,6 +51,11 @@ public class ChartView extends View {
 	private int titleWidth;
 	private float textSize;
 	private float heightOffset;
+
+	private AnimatorSet animatorSet;
+	private int x = VALUE_NONE;
+	private int y = VALUE_NONE;
+	private int alpha = VALUE_NONE;
 
 	public ChartView(Context context) {
 		super(context);
@@ -71,8 +88,88 @@ public class ChartView extends View {
 	@Override
 	protected void onDraw(Canvas canvas) {
 		drawFrame(canvas);
-		drawLines(canvas);
-		drawCircles(canvas);
+		drawChart(canvas);
+	}
+
+	private void drawChart(@NonNull Canvas canvas) {
+		boolean isAnimationRunning = animatorSet != null && animatorSet.isRunning();
+		int position = getChartLinePosition(x, y);
+		int chartLines = isAnimationRunning ? position : position + 1;
+
+		for (int i = 0; i < chartLines; i++) {
+			drawChart(canvas, i);
+		}
+
+		if (isAnimationRunning) {
+			drawChartAnimated(canvas, position, x, y);
+		}
+	}
+
+	private int getChartLinePosition(int x, int y) {
+		if (x <= VALUE_NONE || y <= VALUE_NONE) {
+			return VALUE_NONE;
+		}
+
+		for (int i = 0; i < drawDataList.size(); i++) {
+			DrawData drawData = drawDataList.get(i);
+
+			if (x >= drawData.getStartX() && x <= drawData.getStopX()) {
+				return i;
+			}
+		}
+		return VALUE_NONE;
+	}
+
+	private void drawChart(@NonNull Canvas canvas, int position) {
+		if (position < 0 || position > drawDataList.size()) {
+			return;
+		}
+
+		DrawData drawData = drawDataList.get(position);
+		int startX = drawData.getStartX();
+		int startY = drawData.getStartY();
+
+		int stopX = drawData.getStopX();
+		int stopY = drawData.getStopY();
+
+		float radius = getResources().getDimension(R.dimen.radius);
+		float inerRadius = getResources().getDimension(R.dimen.iner_radius);
+		canvas.drawLine(startX, startY, stopX, stopY, linePaint);
+
+		if (position > 0) {
+			strokePaint.setAlpha(255);
+			fillPaint.setAlpha(255);
+
+			canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), radius, strokePaint);
+			canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), inerRadius, fillPaint);
+		}
+	}
+
+	@SuppressWarnings("UnnecessaryLocalVariable")
+	private void drawChartAnimated(@NonNull Canvas canvas, int position, int x, int y) {
+		if (position < 0 || position > drawDataList.size()) {
+			return;
+		}
+
+		DrawData drawData = drawDataList.get(position);
+		int startX = drawData.getStartX();
+		int startY = drawData.getStartY();
+
+		int stopX = x;
+		int stopY = y;
+
+		float radius = getResources().getDimension(R.dimen.radius);
+		float inerRadius = getResources().getDimension(R.dimen.iner_radius);
+		canvas.drawLine(startX, startY, stopX, stopY, linePaint);
+
+		if (position > 0) {
+			strokePaint.setAlpha(alpha);
+			fillPaint.setAlpha(alpha);
+			Log.e("TEST", "Position: " + position + " alpha: " + alpha);
+
+			canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), radius, strokePaint);
+			canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), inerRadius, fillPaint);
+		}
 	}
 
 	private void drawFrame(@NonNull Canvas canvas) {
@@ -138,31 +235,51 @@ public class ChartView extends View {
 		return valueResidual == 0;
 	}
 
-	private void drawLines(@NonNull Canvas canvas) {
-		for (DrawData drawData : drawDataList) {
-			if (drawData != null) {
-				int startX = drawData.getStartX();
-				int startY = drawData.getStartY();
-
-				int stopX = drawData.getStopX();
-				int stopY = drawData.getStopY();
-
-				canvas.drawLine(startX, startY, stopX, stopY, linePaint);
-			}
-		}
+	public void display() {
+		animatorSet = new AnimatorSet();
+		animatorSet.playSequentially(createAnimatorList());
+		animatorSet.start();
 	}
 
-	private void drawCircles(@NonNull Canvas canvas) {
-		float radius = getResources().getDimension(R.dimen.radius);
-		float inerRadius = getResources().getDimension(R.dimen.iner_radius);
-
-		for (int i = 1; i < drawDataList.size(); i++) {
-			DrawData drawData = drawDataList.get(i);
-			if (drawData != null) {
-				canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), radius, strokePaint);
-				canvas.drawCircle(drawData.getStartX(), drawData.getStartY(), inerRadius, fillPaint);
-			}
+	private List<Animator> createAnimatorList() {
+		List<Animator> animatorList = new ArrayList<>();
+		for (int i = 0; i < drawDataList.size(); i++) {
+			animatorList.add(createAnimator(i));
 		}
+		return animatorList;
+	}
+
+	private ValueAnimator createAnimator(int position) {
+		DrawData drawData = drawDataList.get(position);
+		PropertyValuesHolder propertyX = PropertyValuesHolder.ofInt(PROPERTY_X, drawData.getStartX(), drawData.getStopX());
+		PropertyValuesHolder propertyY = PropertyValuesHolder.ofInt(PROPERTY_Y, drawData.getStartY(), drawData.getStopY());
+		PropertyValuesHolder propertyAlpha = PropertyValuesHolder.ofInt(PROPERTY_ALPHA, 0, 255);
+
+		ValueAnimator animator = new ValueAnimator();
+		animator.setValues(propertyX, propertyY, propertyAlpha);
+		animator.setDuration(ANIMATION_DURATION);
+
+		if (position == drawDataList.size() - 1) {
+			animator.setInterpolator(new AccelerateDecelerateInterpolator());
+		}
+
+		animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+			@Override
+			public void onAnimationUpdate(ValueAnimator valueAnimator) {
+				x = (int) valueAnimator.getAnimatedValue(PROPERTY_X);
+				y = (int) valueAnimator.getAnimatedValue(PROPERTY_Y);
+
+				Object objAlpha = valueAnimator.getAnimatedValue(PROPERTY_ALPHA);
+				if (objAlpha != null) {
+					alpha = (int) objAlpha;
+
+				}
+
+				invalidate();
+			}
+		});
+
+		return animator;
 	}
 
 	public void setData(@Nullable final List<Integer> dataList) {
@@ -173,17 +290,16 @@ public class ChartView extends View {
 		this.dataList.clear();
 		this.dataList.addAll(dataList);
 		updateTitleWidth();
-
 		post(new Runnable() {
 			@Override
 			public void run() {
-				createNextDrawData(dataList);
-				invalidate();
+				updateDrawData(dataList);
+				display();
 			}
 		});
 	}
 
-	private void createNextDrawData(@NonNull List<Integer> dataList) {
+	private void updateDrawData(@NonNull List<Integer> dataList) {
 		correctDataListSize(dataList);
 
 		List<Float> valueList = createValueList(dataList);
@@ -236,7 +352,7 @@ public class ChartView extends View {
 
 		for (int i = 0; i < valueList.size(); i++) {
 			float value = valueList.get(i);
-			DrawData nextDrawData = createNextDrawData(i, value);
+			DrawData nextDrawData = updateDrawData(i, value);
 
 			if (i > 0 && !drawDataList.isEmpty()) {
 				DrawData previousDrawData = drawDataList.get(drawDataList.size() - 1);
@@ -251,7 +367,7 @@ public class ChartView extends View {
 	}
 
 	@NonNull
-	private DrawData createNextDrawData(int index, float value) {
+	private DrawData updateDrawData(int index, float value) {
 		int startX = getCoordinateX(index);
 		int startY = getCoordinateY(value);
 
