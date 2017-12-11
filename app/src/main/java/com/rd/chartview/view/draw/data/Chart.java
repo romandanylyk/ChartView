@@ -21,7 +21,7 @@ public class Chart {
 	private int radius;
 	private int inerRadius;
 
-	private List<Integer> valueList = new ArrayList<>();
+	private List<InputData> inputData = new ArrayList<>();
 	private List<DrawData> drawData = new ArrayList<>();
 
 	public int getWidth() {
@@ -88,12 +88,12 @@ public class Chart {
 		this.inerRadius = inerRadius;
 	}
 
-	public List<Integer> getValueList() {
-		return valueList;
+	public List<InputData> getInputData() {
+		return inputData;
 	}
 
-	public void setValueList(List<Integer> valueList) {
-		this.valueList = valueList;
+	public void setInputData(List<InputData> inputData) {
+		this.inputData = inputData;
 	}
 
 	public List<DrawData> getDrawData() {

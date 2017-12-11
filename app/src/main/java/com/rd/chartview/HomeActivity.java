@@ -1,12 +1,14 @@
 package com.rd.chartview;
 
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import com.rd.chartview.view.ChartView;
+import com.rd.chartview.view.draw.data.InputData;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class HomeActivity extends AppCompatActivity {
 
@@ -19,22 +21,32 @@ public class HomeActivity extends AppCompatActivity {
 
 	private void initViews() {
 		ChartView chartView = (ChartView) findViewById(R.id.charView);
-		List<Integer> dataList = createChartData();
+		List<InputData> dataList = createChartData();
 		chartView.setData(dataList);
 	}
 
 	@NonNull
-	private List<Integer> createChartData() {
-		List<Integer> chartDataList = new ArrayList<>();
-		chartDataList.add(10);
-		chartDataList.add(25);
-		chartDataList.add(20);
-		chartDataList.add(30);
-		chartDataList.add(20);
-		chartDataList.add(50);
-		chartDataList.add(40);
+	private List<InputData> createChartData() {
+		List<InputData> dataList = new ArrayList<>();
+		dataList.add(new InputData(10));
+		dataList.add(new InputData(25));
+		dataList.add(new InputData(20));
+		dataList.add(new InputData(30));
+		dataList.add(new InputData(20));
+		dataList.add(new InputData(50));
+		dataList.add(new InputData(40));
 
-		return chartDataList;
+		long currMillis = System.currentTimeMillis();
+		currMillis -= currMillis % TimeUnit.DAYS.toMillis(1);
+
+		for (int i = 0; i < dataList.size(); i++) {
+			long position = dataList.size() - 1 - i;
+			long offsetMillis = TimeUnit.DAYS.toMillis(position);
+
+			long millis = currMillis - offsetMillis;
+			dataList.get(i).setMillis(millis);
+		}
+
+		return dataList;
 	}
-
 }

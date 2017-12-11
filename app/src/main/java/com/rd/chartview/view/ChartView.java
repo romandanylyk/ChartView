@@ -8,6 +8,7 @@ import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.View;
 import com.rd.chartview.view.draw.data.Chart;
+import com.rd.chartview.view.draw.data.InputData;
 import com.rd.chartview.view.utils.ValueUtils;
 
 import java.util.List;
@@ -56,13 +57,13 @@ public class ChartView extends View implements ChartManager.AnimationListener {
 		invalidate();
 	}
 
-	public void setData(@Nullable final List<Integer> dataList) {
+	public void setData(@Nullable final List<InputData> dataList) {
 		if (dataList == null || dataList.isEmpty()) {
 			return;
 		}
 
 		final Chart chart = chartManager.chart();
-		chart.setValueList(dataList);
+		chart.setInputData(dataList);
 		chartManager.drawer().updateTitleWidth();
 
 		post(new Runnable() {

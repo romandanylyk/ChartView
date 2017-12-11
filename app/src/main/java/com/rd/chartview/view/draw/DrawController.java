@@ -10,9 +10,10 @@ import com.rd.chartview.view.animation.AnimationManager;
 import com.rd.chartview.view.animation.data.AnimationValue;
 import com.rd.chartview.view.draw.data.Chart;
 import com.rd.chartview.view.draw.data.DrawData;
+import com.rd.chartview.view.draw.data.InputData;
+import com.rd.chartview.view.utils.DateUtils;
 import com.rd.chartview.view.utils.ValueUtils;
 
-import java.util.Collections;
 import java.util.List;
 
 public class DrawController {
@@ -50,17 +51,18 @@ public class DrawController {
 	}
 
 	private void drawFrame(@NonNull Canvas canvas) {
-		drawFrameText(canvas);
+		drawChartVertical(canvas);
+		drawChartHorizontal(canvas);
 		drawFrameLines(canvas);
 	}
 
-	private void drawFrameText(@NonNull Canvas canvas) {
-		List<Integer> valueList = chart.getValueList();
-		if (valueList == null || valueList.isEmpty()) {
+	private void drawChartVertical(@NonNull Canvas canvas) {
+		List<InputData> inputDataList = chart.getInputData();
+		if (inputDataList == null || inputDataList.isEmpty()) {
 			return;
 		}
 
-		int maxValue = Collections.max(valueList);
+		int maxValue = ValueUtils.max(inputDataList);
 		int correctedMaxValue = ValueUtils.getCorrectedMaxValue(maxValue);
 		float value = (float) correctedMaxValue / maxValue;
 
@@ -70,7 +72,7 @@ public class DrawController {
 		int titleWidth = chart.getTitleWidth();
 
 		float width = chart.getWidth();
-		float height = chart.getHeight();
+		float height = chart.getHeight() - textSize - padding;
 		float chartPartHeight = ((height - heightOffset) * value) / Chart.CHART_PARTS;
 
 		float currHeight = height;
@@ -90,16 +92,46 @@ public class DrawController {
 				canvas.drawLine(titleWidth, currHeight, width, currHeight, frameInternalPaint);
 			}
 
-			String strTitle = String.valueOf(currTitle);
-			canvas.drawText(strTitle, padding, titleY, frameTextPaint);
+			String title = String.valueOf(currTitle);
+			canvas.drawText(title, padding, titleY, frameTextPaint);
 
 			currHeight -= chartPartHeight;
 			currTitle += correctedMaxValue / Chart.CHART_PARTS;
 		}
 	}
 
+	private void drawChartHorizontal(@NonNull Canvas canvas) {
+		List<InputData> inputDataList = chart.getInputData();
+		List<DrawData> drawDataList = chart.getDrawData();
+
+		for (int i = 0; i < inputDataList.size(); i++) {
+
+			InputData inputData = inputDataList.get(i);
+			String date = DateUtils.format(inputData.getMillis());
+			int dateWidth = (int) frameTextPaint.measureText(date);
+
+			int x;
+			if (drawDataList.size() > i) {
+				DrawData drawData = drawDataList.get(i);
+				x = drawData.getStartX();
+
+				if (i > 0) {
+					x -= (dateWidth / 2);
+				}
+
+			} else {
+				x = drawDataList.get(drawDataList.size() - 1).getStopX() - dateWidth;
+			}
+
+			canvas.drawText(date, x, chart.getHeight(), frameTextPaint);
+		}
+	}
+
 	private void drawFrameLines(@NonNull Canvas canvas) {
-		int height = chart.getHeight();
+		int textSize = chart.getTextSize();
+		int padding = chart.getPadding();
+
+		int height = chart.getHeight() - textSize - padding;
 		int width = chart.getWidth();
 		int titleWidth = chart.getTitleWidth();
 		int heightOffset = chart.getHeightOffset();
@@ -161,12 +193,12 @@ public class DrawController {
 	}
 
 	private int getTitleWidth() {
-		List<Integer> valueList = chart.getValueList();
+		List<InputData> valueList = chart.getInputData();
 		if (valueList == null || valueList.isEmpty()) {
 			return 0;
 		}
 
-		String maxValue = String.valueOf(Collections.max(valueList));
+		String maxValue = String.valueOf(ValueUtils.max(valueList));
 		int titleWidth = (int) frameTextPaint.measureText(maxValue);
 		int padding = chart.getPadding();
 
