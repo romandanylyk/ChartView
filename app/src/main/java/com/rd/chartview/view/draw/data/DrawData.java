@@ -1,4 +1,4 @@
-package com.rd.chartview.view.data;
+package com.rd.chartview.view.draw.data;
 
 public class DrawData {
 
