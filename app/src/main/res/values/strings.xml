@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">ChartView</string>
+    <string name="statistics">Statistics</string>
+    <string name="day">Day</string>
+    <string name="month">Month</string>
+    <string name="year">Year</string>
+    <string name="january">January</string>
+    <string name="march">March</string>
+    <string name="may">May</string>
+    <string name="february">February</string>
+    <string name="april">April</string>
+    <string name="june">June</string>
 </resources>
