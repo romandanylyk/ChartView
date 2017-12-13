@@ -104,6 +104,10 @@ public class DrawController {
 		List<InputData> inputDataList = chart.getInputData();
 		List<DrawData> drawDataList = chart.getDrawData();
 
+		if (inputDataList == null || inputDataList.isEmpty() || drawDataList == null || drawDataList.isEmpty()) {
+			return;
+		}
+
 		for (int i = 0; i < inputDataList.size(); i++) {
 
 			InputData inputData = inputDataList.get(i);
