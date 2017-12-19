@@ -35,7 +35,9 @@ public class ChartManager implements AnimationManager.AnimationListener {
 	}
 
 	public void animate() {
-		animationManager.animate();
+		if (!drawManager.chart().getDrawData().isEmpty()) {
+			animationManager.animate();
+		}
 	}
 
 	@Override

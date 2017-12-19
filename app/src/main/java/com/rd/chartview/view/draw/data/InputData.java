@@ -12,7 +12,7 @@ public class InputData {
 		this.value = value;
 	}
 
-	public InputData(int value, int millis) {
+	public InputData(int value, long millis) {
 		this.value = value;
 		this.millis = millis;
 	}

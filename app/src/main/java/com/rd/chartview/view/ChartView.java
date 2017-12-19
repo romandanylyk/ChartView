@@ -11,6 +11,7 @@ import com.rd.chartview.view.draw.data.Chart;
 import com.rd.chartview.view.draw.data.InputData;
 import com.rd.chartview.view.utils.ValueUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChartView extends View implements ChartManager.AnimationListener {
@@ -57,9 +58,9 @@ public class ChartView extends View implements ChartManager.AnimationListener {
 		invalidate();
 	}
 
-	public void setData(@Nullable final List<InputData> dataList) {
-		if (dataList == null || dataList.isEmpty()) {
-			return;
+	public void setData(@Nullable List<InputData> dataList) {
+		if (dataList == null) {
+			dataList = new ArrayList<>();
 		}
 
 		final Chart chart = chartManager.chart();

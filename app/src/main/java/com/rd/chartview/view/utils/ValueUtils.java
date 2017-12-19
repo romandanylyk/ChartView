@@ -10,6 +10,7 @@ import com.rd.chartview.view.draw.data.InputData;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.TimeUnit;
 
 public class ValueUtils {
 
@@ -46,7 +47,7 @@ public class ValueUtils {
 
 	@NotificationCompat.NotificationVisibility
 	public static List<DrawData> getDrawData(@Nullable Chart chart) {
-		if (chart == null) {
+		if (chart == null || chart.getInputData().isEmpty()) {
 			return new ArrayList<>();
 		}
 
@@ -65,8 +66,13 @@ public class ValueUtils {
 	}
 
 	private static void addLackingItems(@NonNull List<InputData> dataList) {
-		for (int i = dataList.size(); i <= Chart.MAX_ITEMS_COUNT; i++) {
-			dataList.add(0, new InputData());
+		for (int i = dataList.size(); i < Chart.MAX_ITEMS_COUNT; i++) {
+			long millis = dataList.get(0).getMillis() - TimeUnit.DAYS.toMillis(1);
+			if (millis < 0) {
+				millis = 0;
+			}
+
+			dataList.add(0, new InputData(0, millis));
 		}
 	}
 
@@ -96,37 +102,39 @@ public class ValueUtils {
 	private static List<DrawData> createDrawDataList(@NonNull Chart chart, @NonNull List<Float> valueList) {
 		List<DrawData> drawDataList = new ArrayList<>();
 
-		for (int i = 0; i < valueList.size(); i++) {
-			float value = valueList.get(i);
-			DrawData nextDrawData = updateDrawData(chart, i, value);
-
-			if (i > 0 && !drawDataList.isEmpty()) {
-				DrawData previousDrawData = drawDataList.get(drawDataList.size() - 1);
-				updatePreviousDrawData(previousDrawData, nextDrawData);
-			}
-
-			drawDataList.add(nextDrawData);
+		for (int i = 0; i < valueList.size() - 1; i++) {
+			DrawData drawData = createDrawData(chart, valueList, i);
+			drawDataList.add(drawData);
 		}
 
-		drawDataList.remove(drawDataList.size() - 1);
 		return drawDataList;
 	}
 
 	@NonNull
-	private static DrawData updateDrawData(@NonNull Chart chart, int index, float value) {
-		int startX = getCoordinateX(chart, index);
+	private static DrawData createDrawData(@NonNull Chart chart, @NonNull List<Float> valueList, int position) {
+		DrawData drawData = new DrawData();
+		if (position > valueList.size() - 1) {
+			return drawData;
+		}
+
+		float value = valueList.get(position);
+		int startX = getCoordinateX(chart, position);
 		int startY = getCoordinateY(chart, value);
 
-		DrawData drawData = new DrawData();
 		drawData.setStartX(startX);
 		drawData.setStartY(startY);
 
-		return drawData;
-	}
+		int nextPosition = position + 1;
+		if (nextPosition < valueList.size()) {
+			float nextValue = valueList.get(nextPosition);
+			int stopX = getCoordinateX(chart, nextPosition);
+			int stopY = getCoordinateY(chart, nextValue);
 
-	private static void updatePreviousDrawData(@NonNull DrawData previousDrawData, @NonNull DrawData nextDrawData) {
-		previousDrawData.setStopX(nextDrawData.getStartX());
-		previousDrawData.setStopY(nextDrawData.getStartY());
+			drawData.setStopX(stopX);
+			drawData.setStopY(stopY);
+		}
+
+		return drawData;
 	}
 
 	@SuppressWarnings("UnnecessaryLocalVariable")
