@@ -20,7 +20,7 @@ public class HomeActivity extends AppCompatActivity {
 	}
 
 	private void initViews() {
-		ChartView chartView = (ChartView) findViewById(R.id.charView);
+		ChartView chartView = findViewById(R.id.charView);
 		List<InputData> dataList = createChartData();
 		chartView.setData(dataList);
 	}
