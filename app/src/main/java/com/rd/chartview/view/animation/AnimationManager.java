@@ -21,13 +21,14 @@ public class AnimationManager {
 	public static final String PROPERTY_ALPHA = "PROPERTY_ALPHA";
 
 	public static final int VALUE_NONE = -1;
-	public static final int ALPHA_END = 0xFF;
-	public static final int ALPHA_START = (int) (ALPHA_END * 0.7f);
-	private static final int ANIMATION_DURATION = 250;
+	public static final int ALPHA_START = 0;
+	public static final int ALPHA_END = 255;
+	private static final int ANIMATION_DURATION = 2500;
 
 	private Chart chart;
 	private AnimatorSet animatorSet;
 	private AnimationListener listener;
+	private AnimationValue lastValue;
 
 	public interface AnimationListener {
 
@@ -88,9 +89,11 @@ public class AnimationManager {
 		AnimationValue value = new AnimationValue();
 		value.setX(x);
 		value.setY(y);
-		value.setAlpha(alpha);
+		value.setAlpha(adjustAlpha(runningAnimationPosition, alpha));
 		value.setRunningAnimationPosition(runningAnimationPosition);
+
 		listener.onAnimationUpdated(value);
+		lastValue = value;
 	}
 
 	private int getRunningAnimationPosition() {
@@ -103,5 +106,20 @@ public class AnimationManager {
 		}
 
 		return VALUE_NONE;
+	}
+
+	private int adjustAlpha(int runningPos, int alpha) {
+		if (lastValue == null) {
+			return alpha;
+		}
+
+		boolean isPositionIncreased = runningPos > lastValue.getRunningAnimationPosition();
+		boolean isAlphaIncreased = alpha > lastValue.getAlpha();
+
+		if (!isPositionIncreased && !isAlphaIncreased) {
+			return lastValue.getAlpha();
+		} else {
+			return alpha;
+		}
 	}
 }
